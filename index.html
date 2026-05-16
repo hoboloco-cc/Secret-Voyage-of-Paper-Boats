@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- 接入豆包等云端对话：先运行 server/cailun-proxy.mjs，再取消下一行注释并改成你的代理地址 -->
+    <!-- <meta name="cailun-chat-endpoint" content="http://127.0.0.1:8787/chat" /> -->
+    <title>Secret Voyage of Paper Boats · 纸船的神秘航线</title>
+    <link rel="stylesheet" href="css/book.css?v=61" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      if (location.protocol === "file:")
+        document.documentElement.classList.add("is-local-file");
+    </script>
+  </head>
+  <body>
+    <div class="env-banner" id="env-banner">
+      <strong>检测到你是用「双击文件」打开（地址栏里是 file://）</strong>：多数浏览器<strong>不允许</strong>在这种方式下使用摄像头，手势和点读脚本也可能<strong>完全不运行</strong>，所以只会看到空框、按钮没反应。
+      <span class="env-banner__fix"
+        >请用 <strong>http://localhost</strong> 打开本文件夹：在项目目录打开终端，执行 <code>py -3 -m http.server 8080</code> 或 <code>npx serve -l 8080</code>，再在浏览器访问
+        <code>http://localhost:8080</code>。</span>
+    </div>
+
+    <section id="cover-screen" class="cover" aria-label="绘本封面">
+      <div class="cover__bg" aria-hidden="true">
+        <img
+          class="cover__bg-img"
+          src="初始页面配图.jpg"
+          alt=""
+          decoding="async"
+          fetchpriority="high"
+        />
+        <div class="cover__zoom-lens" aria-hidden="true">
+          <div class="cover__zoom-lens-shifter">
+            <img
+              class="cover__bg-img cover__bg-img--lens"
+              src="初始页面配图.jpg"
+              alt=""
+              decoding="async"
+              fetchpriority="high"
+            />
+          </div>
+        </div>
+      </div>
+      <img
+        class="cover__corner-logo"
+        src="logo2.png"
+        alt="纸船的神秘航线 · 绘本标志"
+        width="200"
+        height="200"
+        decoding="async"
+      />
+      <button
+        type="button"
+        id="cover-music-btn"
+        class="cover__music-btn is-pending"
+        aria-label="开启背景音乐"
+        aria-pressed="false"
+        title="背景音乐"
+      >
+        <span class="cover__music-btn-icon" aria-hidden="true">♪</span>
+      </button>
+      <div class="cover__inner">
+        <header class="cover__masthead">
+          <p class="cover__kicker">四大发明主题绘本 · 交互阅读</p>
+          <h1 class="cover__title-zh" lang="zh-CN">纸船的神秘航线</h1>
+          <p class="cover__title-en" lang="en">Secret Voyage of Paper Boats</p>
+          <p class="cover__subtitle">趣味冒险　科普教育　数字交互</p>
+        </header>
+        <div class="cover__actions">
+          <button type="button" class="cover__start-btn" id="cover-start" aria-label="开启秘密航线，进入绘本体验">
+            <span class="cover__start-btn-text">开启秘密航线</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div id="app-experience" class="app-experience" hidden>
+    <header class="site-nav" id="site-nav">
+      <div class="site-nav__row">
+        <div class="site-nav__logo-slot">
+          <img
+            class="site-nav__corner-logo"
+            src="logo2.png"
+            alt="纸船的神秘航线 · 绘本标志"
+            width="200"
+            height="200"
+            decoding="async"
+          />
+        </div>
+        <div class="site-nav__brand" id="book-brand" aria-label="绘本标题"></div>
+        <div class="site-nav__center">
+          <span class="site-nav__section-label">分册</span>
+          <nav class="site-nav__tabs" id="nav-tabs" aria-label="绘本分册"></nav>
+        </div>
+        <div class="site-nav__page" aria-label="翻页">
+          <button type="button" class="icon-btn" id="btn-prev" aria-label="上一页">
+            <span aria-hidden="true">‹</span>
+          </button>
+          <span class="site-nav__page-pill" id="page-info">0 / 0</span>
+          <button type="button" class="icon-btn" id="btn-next" aria-label="下一页">
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+      <div class="site-nav__guide">
+        <span class="site-nav__guide-label">互动指南</span>
+        <p class="site-nav__hint">
+          <strong>翻页</strong>：四指握拳，拇指水平伸出翻页。
+          <span class="site-nav__hint-sep" aria-hidden="true">·</span>
+          <strong>缩放</strong>：五指张开放大，指尖聚拢缩小。
+          <span class="site-nav__hint-sep" aria-hidden="true">·</span>
+          <strong>握拳互动</strong>：上册进入四大发明科普；下册可与虚拟智能体对话。
+          <span class="site-nav__hint-sep" aria-hidden="true">·</span>
+          键盘 <kbd>←</kbd> <kbd>→</kbd> 翻页。
+        </p>
+      </div>
+    </header>
+
+    <main class="stage-wrap" id="stage-wrap">
+      <div class="book-stage" id="book-stage">
+        <div class="book-frame" id="book-frame">
+          <img id="book-img" alt="" />
+          <div class="read-layer" id="read-layer"></div>
+          <aside id="science-gate-hint" class="papermaking-gate-hint" hidden aria-live="polite">
+            <div class="papermaking-gate-hint__inner">
+              <span class="papermaking-gate-hint__badge">互动提示</span>
+              <p class="papermaking-gate-hint__text">
+                想进入<strong>「造纸术」</strong>科普拓览？请先<strong>开启右下角摄像头</strong>，再对着画面将手<strong>握拳并保持约一秒</strong>（像握住一支笔），系统会扫描当前书页并打开大图科普。
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div id="jump-show-slot" class="jump-show-slot" hidden aria-live="polite"></div>
+    </main>
+
+    <div class="face-panel" id="face-panel">
+      <div class="face-panel__inner" id="face-inner">
+        <div class="face-panel__video-shell" aria-hidden="true">
+          <video id="cam-video" playsinline muted autoplay></video>
+          <canvas id="hand-skeleton-canvas" class="face-panel__skeleton-canvas" aria-hidden="true"></canvas>
+        </div>
+        <div class="face-panel__overlay" id="cam-overlay" hidden></div>
+        <div class="face-panel__label">手势 · 人像预览</div>
+      </div>
+    </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <audio id="bg-music" src="music/music.mp3" loop preload="auto" playsinline aria-hidden="true"></audio>
+
+    <div id="paper-scan-overlay" class="paper-scan-overlay" aria-hidden="true">
+      <button type="button" class="paper-scan-overlay__close" id="paper-scan-close" aria-label="取消扫描并返回绘本">
+        ×
+      </button>
+      <div class="paper-scan-panel">
+        <div class="paper-scan-panel__body">
+          <div class="paper-scan-sheet" id="paper-scan-sheet">
+            <div class="paper-scan-sheet__stack">
+              <img
+                class="paper-scan-sheet__photo"
+                id="paper-scan-sheet-photo"
+                alt=""
+                decoding="async"
+                loading="eager"
+              />
+              <div class="paper-scan-sheet__pass" id="paper-scan-sheet-pass" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="jump-show-modal" class="jump-show-modal" aria-hidden="true" role="dialog" aria-label="跳页展示">
+      <div class="jump-show-modal__backdrop" id="jump-show-backdrop"></div>
+      <button type="button" class="paper-scan-overlay__close jump-show-modal__close" id="jump-show-close" aria-label="关闭">
+        ×
+      </button>
+      <div class="jump-show-modal__shell">
+        <div class="jump-show-modal__sheet">
+          <img id="jump-show-img" alt="跳页展示配图" decoding="async" />
+        </div>
+      </div>
+    </div>
+
+    <div id="papermaking-modal" class="papermaking-modal" data-science="paper" aria-hidden="true" role="dialog" aria-labelledby="pm-modal-title">
+      <div class="papermaking-modal__backdrop" id="papermaking-backdrop"></div>
+      <div class="papermaking-modal__panel">
+        <header class="papermaking-modal__head">
+          <h2 id="pm-modal-title">造纸术 · 四大发明之一</h2>
+          <button type="button" class="papermaking-modal__close" id="papermaking-close" aria-label="关闭">×</button>
+        </header>
+        <div class="papermaking-modal__body pm-shell">
+          <nav class="pm-sidebar" id="pm-sidebar" aria-label="造纸术板块切换">
+            <p class="pm-sidebar__title">板块</p>
+            <div class="pm-sidebar__nav">
+              <button type="button" class="pm-nav-btn is-active" id="pm-nav-0" data-pm-index="0" aria-controls="pm-panel-0" aria-selected="true">
+                <span class="pm-nav-btn__n">01</span>
+                <span class="pm-nav-btn__t">发明家与地位</span>
+              </button>
+              <button type="button" class="pm-nav-btn" id="pm-nav-1" data-pm-index="1" aria-controls="pm-panel-1" aria-selected="false">
+                <span class="pm-nav-btn__n">02</span>
+                <span class="pm-nav-btn__t">造纸流程</span>
+              </button>
+              <button type="button" class="pm-nav-btn" id="pm-nav-2" data-pm-index="2" aria-controls="pm-panel-2" aria-selected="false">
+                <span class="pm-nav-btn__n">03</span>
+                <span class="pm-nav-btn__t">纸与书的演变</span>
+              </button>
+            </div>
+          </nav>
+
+          <div class="pm-main">
+            <p class="papermaking-lead">
+              造纸术让人类第一次能用<strong>相对低廉的成本</strong>批量复制文字与图画。左侧三个板块可<strong>点击</strong>切换；在右侧区域内<strong>先读完再滚轮</strong>：内容滚到顶/底后继续滚，可进入上一/下一板块。
+            </p>
+            <p class="pm-scroll-hint" id="pm-scroll-hint">当前：发明家与地位 · 在右侧慢慢读；滚到最底后再向下滚 → 进入「造纸流程」</p>
+
+            <div class="pm-detail-region" id="pm-detail-region" tabindex="0" aria-label="科普详情，可用滚轮在边界切换板块">
+              <article class="pm-panel is-active" id="pm-panel-0" role="tabpanel" aria-labelledby="pm-nav-0">
+                <h3 class="pm-panel__h">发明家与历史地位</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img
+                      src="科普页面/1-1.png"
+                      alt="造纸术 · 发明家与历史地位配图"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <figcaption>手工抄纸：纤维在水中交织成「湿纸页」，再经压榨、烘干定型——这一原理至今仍是造纸工业的核心。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">纸出现以前，人们怎么记录？</h4>
+                    <p>
+                      在纸张普及之前，中国有<strong>甲骨、金石、竹简、木牍</strong>，西方有泥板、羊皮纸等。它们要么笨重难携，要么昂贵稀少，知识难以「随身带走」，更难以大规模流通。
+                    </p>
+                    <h4 class="pm-subh">西汉的纸与东汉的改进</h4>
+                    <p>
+                      考古发现表明，西汉已有原始植物纤维纸，但质地较粗、用途有限。<strong>东汉蔡伦</strong>（约公元 63—121 年）系统总结工艺，用<strong>树皮、麻头、破布、旧渔网</strong>等易得原料制浆抄纸，提高了成品匀度与强度，史称「<strong>蔡侯纸</strong>」。他常被视为造纸术<strong>工程化与推广</strong>的关键人物，而非「世界上第一张纸」的唯一发明者——科学史更强调<strong>集体经验与持续改良</strong>。
+                    </p>
+                    <h4 class="pm-subh">四大发明与世界影响</h4>
+                    <p>
+                      造纸术与指南针、火药、印刷术并称<strong>中国古代四大发明</strong>。纸张沿陆上与海上商路外传，降低了书写与行政、宗教、学术活动的成本，为后来<strong>学校、图书馆、近代出版业</strong>的出现奠定了物质基础，也被视为人类文明史上的重要节点。
+                    </p>
+                    <ul class="pm-bullets">
+                      <li><strong>教育公平</strong>：课本与讲义成本下降，更多人能识字读书。</li>
+                      <li><strong>档案与法律</strong>：契约、律令、地图便于存档与传递。</li>
+                      <li><strong>跨文化交流</strong>：翻译与抄本使思想得以远距离对话。</li>
+                    </ul>
+                  </div>
+                </div>
+              </article>
+
+              <article class="pm-panel" id="pm-panel-1" hidden role="tabpanel" aria-labelledby="pm-nav-1">
+                <h3 class="pm-panel__h">造纸术的主要流程</h3>
+                <div class="pm-grid pm-grid--reverse">
+                  <figure class="pm-figure">
+                    <img
+                      src="科普页面/1-2.png"
+                      alt="造纸术 · 造纸流程配图"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <figcaption>抄纸与晾晒：纸帘上纤维层层叠合，水分逐渐散失，形成具有一定强度的干纸。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <p>
+                      无论手工纸坊还是现代纸机，本质都是把植物纤维<strong>分散在水中再重新交织</strong>，然后脱水、加压、干燥。下面按「从原料到成纸」的顺序理解主要工序。
+                    </p>
+                    <ol class="pm-steps">
+                      <li>
+                        <strong>选料与备料</strong>：常用原料包括树皮（如楮皮）、竹、稻草、麻类等富含纤维素的植物。原料需切碎、拣选，有时先风干或轻度发酵，便于后续分散。
+                      </li>
+                      <li>
+                        <strong>浸软与制浆</strong>：长时间浸泡或加石灰等碱性物质<strong>蒸煮、沤烂</strong>，使木质素、果胶等杂质溶出，纤维束分散成悬浮浆料。水质与温度会影响纤维分散度与色泽。
+                      </li>
+                      <li>
+                        <strong>打浆与调料</strong>：用石臼、石碾或现代打浆机进一步<strong>切断、帚化纤维</strong>，控制纸张的紧度与强度。可加入植物胶等「纸药」帮助纤维均匀悬浮、减少絮聚。
+                      </li>
+                      <li>
+                        <strong>抄纸（成形）</strong>：用竹帘、丝网或现代成形网在水中<strong>轻轻晃动、提起</strong>，使纤维在二维平面上交织成湿纸页。抄纸师傅的手感决定厚薄均匀与纹理。
+                      </li>
+                      <li>
+                        <strong>压榨与分张</strong>：叠放多张湿纸，用重物或机械压榨排出水分，再小心揭分，避免破损。
+                      </li>
+                      <li>
+                        <strong>干燥与整饰</strong>：贴火墙烘干、日晒或烘缸干燥；必要时<strong>砑光、施胶、涂布</strong>，得到适合书写或印刷的表面。宣纸等品种还会经过特殊工艺形成润墨特性。
+                      </li>
+                    </ol>
+                    <p class="pm-note">
+                      现代造纸厂增加了连续洗浆、漂白、填料与施胶化学品等环节，并重视<strong>废水处理与林纸一体化</strong>；但「分散—成形—脱水—干燥」的主线与传统手工纸仍一脉相承。
+                    </p>
+                  </div>
+                </div>
+              </article>
+
+              <article class="pm-panel" id="pm-panel-2" hidden role="tabpanel" aria-labelledby="pm-nav-2">
+                <h3 class="pm-panel__h">纸与「书」的演变</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img
+                      src="科普页面/1-3.png"
+                      alt="造纸术 · 纸与书的演变配图"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <figcaption>线装书：纸叶叠齐打孔穿线，既牢固又便于平摊阅读，是中国古代晚期最常见的书籍装帧之一。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">从简帛到纸写本</h4>
+                    <p>
+                      竹简成「册」、缣帛成「卷」，都受限于体积与价格。纸张轻薄、可双面书写、能裁切成统一书叶，使<strong>个人笔记、官府簿册、佛经道藏、诗文别集</strong>得以大量抄写与流传。纸与笔墨结合，也塑造了中国书法的线质与章法。
+                    </p>
+                    <h4 class="pm-subh">装订形制的变迁</h4>
+                    <p>
+                      纸普及后，书籍外观经历了多次「改版」：从<strong>卷轴</strong>到<strong>经折装</strong>（长纸折叠成册），再到<strong>蝴蝶装、包背装</strong>，最终在明清以<strong>线装</strong>为主流。每一种装帧都在平衡<strong>保护书叶、翻阅便利、制作成本</strong>三者之间的关系。
+                    </p>
+                    <ul class="pm-bullets">
+                      <li><strong>卷轴</strong>：适合连续阅读长文，类似横屏滚动。</li>
+                      <li><strong>经折装</strong>：折成方册，便于携带与诵读。</li>
+                      <li><strong>线装</strong>：书叶打孔穿线，修复与重装相对容易。</li>
+                    </ul>
+                    <h4 class="pm-subh">纸与印刷、数字阅读</h4>
+                    <p>
+                      纸降低了信息复制的边际成本，与雕版印刷、活字印刷结合后，催生了<strong>书坊、书商、公共阅读</strong>等社会现象。进入现代，机制纸、胶版印刷与平装书让教科书与期刊走进千家万户；而今天我们在屏幕上的滑动与批注，也可以看作<strong>「载体变了，但阅读与书写仍在延续」</strong>。
+                    </p>
+                    <p>
+                      了解造纸术，不只是记住一个名字，更是理解<strong>材料、工艺与社会需求</strong>如何共同推动文明进步——这也是本绘本希望传递的一种读史方式。
+                    </p>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <footer class="papermaking-modal__foot">
+              <p>配图来自本项目「科普页面」文件夹，仅供教育使用。</p>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="printing-modal" class="papermaking-modal" data-science="printing" aria-hidden="true" role="dialog" aria-labelledby="pt-modal-title">
+      <div class="papermaking-modal__backdrop"></div>
+      <div class="papermaking-modal__panel">
+        <header class="papermaking-modal__head">
+          <h2 id="pt-modal-title">活字印刷术 · 四大发明之一</h2>
+          <button type="button" class="papermaking-modal__close" aria-label="关闭">×</button>
+        </header>
+        <div class="papermaking-modal__body pm-shell">
+          <nav class="pm-sidebar" aria-label="活字印刷板块">
+            <p class="pm-sidebar__title">板块</p>
+            <div class="pm-sidebar__nav">
+              <button type="button" class="pm-nav-btn is-active" data-pm-index="0" aria-selected="true"><span class="pm-nav-btn__n">01</span><span class="pm-nav-btn__t">毕昇与历史地位</span></button>
+              <button type="button" class="pm-nav-btn" data-pm-index="1" aria-selected="false"><span class="pm-nav-btn__n">02</span><span class="pm-nav-btn__t">制字与刷印</span></button>
+              <button type="button" class="pm-nav-btn" data-pm-index="2" aria-selected="false"><span class="pm-nav-btn__n">03</span><span class="pm-nav-btn__t">传播与演变</span></button>
+            </div>
+          </nav>
+          <div class="pm-main">
+            <p class="papermaking-lead">雕版一次只能刻一整版，改一个字就要重刻。<strong>活字</strong>把常用字做成可移动的「字丁」，排版后可拆下再用，大幅提高了文本复制的效率。</p>
+            <p class="pm-scroll-hint">当前：毕昇与历史地位</p>
+            <div class="pm-detail-region" tabindex="0" aria-label="活字印刷科普详情">
+              <article class="pm-panel is-active" role="tabpanel">
+                <h3 class="pm-panel__h">毕昇与活字印刷的历史地位</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Chinese_Bookbinding.jpg/800px-Chinese_Bookbinding.jpg" alt="中国古代书籍与书叶" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>纸与装订的普及，为印刷提供了「承印物」；活字则让「同一套字」反复参与不同版面。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">雕版印刷的长处与局限</h4>
+                    <p>唐代以来<strong>雕版印刷</strong>成熟：整版反刻文字，刷墨、覆纸加压即可大量刷印，适合佛经、儒家经典等印量极大的书籍。但若只改几个字、或印量不大，整块木板成本与周期都很高。</p>
+                    <h4 class="pm-subh">毕昇与泥活字</h4>
+                    <p>北宋<strong>毕昇</strong>（约 11 世纪）发明<strong>泥活字</strong>：用胶泥刻成单字，火烧定型后排版夹紧刷印，印完可拆字归位。沈括《梦溪笔谈》记录了其工艺要点，使活字印刷在世界科技史上有了明确文献坐标。</p>
+                    <p>泥活字易损、怕潮，后世又发展木活字、铜活字、铅活字等，本质都是在解决「耐用、清晰、成本」之间的平衡——技术史往往是一串接力，而不是一次「完美定型」。</p>
+                    <h4 class="pm-subh">与造纸术、教育的联动</h4>
+                    <p>纸让信息载体变轻、变便宜；印刷让同一文本的复本数量陡增。二者叠加，使<strong>官学、书院、坊刻本</strong>更容易进入城镇与乡村，也在客观上推动了识字率与地方文化的繁荣。</p>
+                    <h4 class="pm-subh">思想史上的意义</h4>
+                    <p>活字思想把「书写」拆成<strong>可重组的最小单元</strong>，与后来计算机里的字体、排版软件在逻辑上遥相呼应；它降低了试错成本，使知识更新与地方刻书更为灵活。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>标准化</strong>：字丁尺寸统一，版面更易整齐。</li>
+                      <li><strong>可维护</strong>：错字可单字更换，不必整版返工。</li>
+                      <li><strong>可扩展</strong>：生僻字可补刻入架，形成「活字库」。</li>
+                    </ul>
+                  </div>
+                </div>
+              </article>
+              <article class="pm-panel" hidden role="tabpanel">
+                <h3 class="pm-panel__h">制字、排版与刷印</h3>
+                <div class="pm-grid pm-grid--reverse">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Making_paper_in_China.jpg/800px-Making_paper_in_China.jpg" alt="传统手工制作与工坊场景" width="480" height="320" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>字丁制作、检字排版与刷印多在同一工坊流水协作完成。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">从字模到印张</h4>
+                    <p>活字印刷是「材料科学 + 手工技艺 + 版面逻辑」的结合：字丁要耐磨、墨迹要均匀、纸张要受墨不洇，任何一环掉链子，成品都会糊成一团。</p>
+                    <ol class="pm-steps">
+                      <li><strong>制字</strong>：泥、木、铜、铅等材料刻成反向单字，大小统一，字背可带柄或凹槽便于夹取。</li>
+                      <li><strong>排版</strong>：按文稿在字盘中拣字，置入框内，行间塞紧「木条」固定，形成一整版活字。</li>
+                      <li><strong>刷墨与覆纸</strong>：用软刷均匀上墨，覆纸后以棕刷或压辊加压，使墨迹转印到纸面。</li>
+                      <li><strong>拆版与归字</strong>：印毕拆版，字丁分类归架，供下次排版复用。</li>
+                    </ol>
+                    <h4 class="pm-subh">检字与「常用字表」</h4>
+                    <p>汉字数量大，工坊往往按部首、韵部或笔画把字架分区；高频字放在手边，低频字远架。这种空间布局，和今天输入法里的<strong>词频、联想</strong>其实是同一种效率思维。</p>
+                    <p class="pm-note">木活字、铜活字、铅活字在后世各有优劣：硬度、耐磨、铸造成本与印刷压力要求不同，共同推动了「字库」与印刷机械的发展。</p>
+                  </div>
+                </div>
+              </article>
+              <article class="pm-panel" hidden role="tabpanel">
+                <h3 class="pm-panel__h">传播、演变与全球对话</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Xuan_paper_making_AnHui_Cina.jpg/800px-Xuan_paper_making_AnHui_Cina.jpg" alt="纸张与印刷材料" width="480" height="320" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>优质纸张与稳定油墨，是活字印刷成品清晰度的重要保障。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">东亚与欧洲的平行发展</h4>
+                    <p>活字技术随人员与书籍在东亚传播，朝鲜、日本等地发展出本土木活字与金属活字体系。15 世纪中叶欧洲<strong>古登堡</strong>铅合金活字与螺旋压印结合，推动了宗教读物与近代出版业。</p>
+                    <p>不同文字体系对活字提出不同难题：汉字字丁数量庞大，拉丁字母表小而规则——这解释了为何「活字思想」到处生根，但具体工艺路径并不完全相同。</p>
+                    <h4 class="pm-subh">从工坊到大众阅读</h4>
+                    <p>近代报纸、杂志、平装书的流行，与高速印刷机、廉价机制纸、发行网络密不可分。活字时代奠定的「可复制文本」观念，一直延续到数字出版与电子书。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>版权与作者</strong>：印本增多后，抄本时代的模糊边界逐渐让位于「谁印、谁卖」的商业与法律关系。</li>
+                      <li><strong>校对与版本</strong>：同一书多次改版，催生目录学与文献学中的版本比对方法。</li>
+                    </ul>
+                    <p>今天数字字体仍是「可复用的字形单元」；理解活字，有助于理解<strong>字符编码、排版引擎与开源字体</strong>背后的历史脉络。</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <footer class="papermaking-modal__foot"><p>配图来自本项目「科普页面」文件夹，仅供教育使用。</p></footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="compass-modal" class="papermaking-modal" data-science="compass" aria-hidden="true" role="dialog" aria-labelledby="cp-modal-title">
+      <div class="papermaking-modal__backdrop"></div>
+      <div class="papermaking-modal__panel">
+        <header class="papermaking-modal__head">
+          <h2 id="cp-modal-title">指南针 · 四大发明之一</h2>
+          <button type="button" class="papermaking-modal__close" aria-label="关闭">×</button>
+        </header>
+        <div class="papermaking-modal__body pm-shell">
+          <nav class="pm-sidebar" aria-label="指南针板块">
+            <p class="pm-sidebar__title">板块</p>
+            <div class="pm-sidebar__nav">
+              <button type="button" class="pm-nav-btn is-active" data-pm-index="0" aria-selected="true"><span class="pm-nav-btn__n">01</span><span class="pm-nav-btn__t">司南与原理</span></button>
+              <button type="button" class="pm-nav-btn" data-pm-index="1" aria-selected="false"><span class="pm-nav-btn__n">02</span><span class="pm-nav-btn__t">形制与应用</span></button>
+              <button type="button" class="pm-nav-btn" data-pm-index="2" aria-selected="false"><span class="pm-nav-btn__n">03</span><span class="pm-nav-btn__t">航海与世界</span></button>
+            </div>
+          </nav>
+          <div class="pm-main">
+            <p class="papermaking-lead">指南针利用<strong>地磁场</strong>对磁针的作用，使人类在阴天、夜航或开阔海面仍能辨别方向，深刻改变了<strong>航海、舆图与军事机动</strong>。</p>
+            <p class="pm-scroll-hint">当前：司南与原理</p>
+            <div class="pm-detail-region" tabindex="0" aria-label="指南针科普详情">
+              <article class="pm-panel is-active" role="tabpanel">
+                <h3 class="pm-panel__h">司南、磁石与地磁场</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Modern_Compass.jpg/800px-Modern_Compass.jpg" alt="现代指南针罗盘" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>磁针静止时沿南北方向排列，与地球磁场方向一致。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">从司南到磁针</h4>
+                    <p>中国古籍中有<strong>司南</strong>等早期磁性指向器的记载；天然磁石（磁铁矿）经琢磨可具极性。宋代以后<strong>人工磁化</strong>（如摩擦磁化钢针）使指南针更易量产。</p>
+                    <p>磁体周围存在<strong>磁场</strong>；自由转动的磁针会转到与外磁场一致的方向。把这一自然现象做成可随身携带的仪器，是人类「借用地球本身当参照系」的巧思。</p>
+                    <h4 class="pm-subh">地磁场与磁偏角</h4>
+                    <p>地球可近似看作一根大磁铁，磁针北极指向地理北极附近（存在磁偏角）。理解<strong>磁偏角</strong>对古代航海修正航向尤为重要——同一海域在不同年代测得的偏角还会缓慢变化，海图与针路簿里常留有修正口诀。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>真北与磁北</strong>：地图上的正北与磁针所指往往不完全重合。</li>
+                      <li><strong>倾角</strong>：磁针在赤道附近近乎水平，靠近两极时倾角增大。</li>
+                    </ul>
+                    <p class="pm-note">现代物理用「地磁发电机理论」解释地磁场成因；儿童阅读只需记住：指南针依赖的是地球这个大磁体，而不是「神秘力量」。</p>
+                  </div>
+                </div>
+              </article>
+              <article class="pm-panel" hidden role="tabpanel">
+                <h3 class="pm-panel__h">水浮针、旱针与罗盘</h3>
+                <div class="pm-grid pm-grid--reverse">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Marine_compass.jpg/800px-Marine_compass.jpg" alt="航海罗盘" width="480" height="320" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>航海罗盘常配合方位圈、照准器，减小船舶摇摆对读数的影响。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">形制怎样适应不同场景</h4>
+                    <p>陆上行走、舆图测绘、船舶摇摆——场景不同，对「支承方式、阻尼、读数精度」的要求也不同，于是出现了水浮、旱针、航海罗盘等分支形制。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>水浮针</strong>：磁针穿灯草浮于水面，稳定指向。</li>
+                      <li><strong>旱罗盘</strong>：轴尖支承磁针，适合陆行与舆图测绘。</li>
+                      <li><strong>二十四向罗盘</strong>：与风水、航海术语结合，形成精细方位体系。</li>
+                    </ul>
+                    <h4 class="pm-subh">与天文、地标导航的配合</h4>
+                    <p>阴天无星、海面缺少地标时，磁罗盘价值最大；晴朗夜航仍可结合<strong>北极星高度</strong>估算纬度。传统航海是「多种证据交叉验证」的经验科学。</p>
+                    <p>指南针与<strong>量天尺、更路簿、海图</strong>等工具共同构成传统导航知识；近代又与六分仪、天文定位互补。</p>
+                  </div>
+                </div>
+              </article>
+              <article class="pm-panel" hidden role="tabpanel">
+                <h3 class="pm-panel__h">远洋航行与知识传播</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Making_paper_in_China.jpg/640px-Making_paper_in_China.jpg" alt="古代交通与文化交流" width="480" height="320" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>指南针降低了远洋「迷航」风险，促进了跨洋贸易与地理大发现时代的海洋活动。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">海上丝绸之路与远洋风险</h4>
+                    <p>宋元明时期海上丝绸之路商船广泛使用指南针；季风、洋流、暗礁与海盗并存，可靠的定向手段直接关系到船货与生命。针路、更路这类民间知识，往往以手抄本在船民间传承。</p>
+                    <p>技术外传后，欧洲、阿拉伯世界的航海文献也陆续出现磁罗盘记载，并与当地造船、天文观测结合，形成各具特色的导航手册。</p>
+                    <h4 class="pm-subh">科学史的一点提醒</h4>
+                    <p>「指南针带来地理大发现」这类说法过于简化：远洋航行依赖<strong>政治动机、资本、造船、补给、水文知识</strong>的整套系统；指南针是其中重要一块拼图，而不是唯一开关。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>误差来源</strong>：船上铁器、雷电、近岸磁异常都可能干扰磁针。</li>
+                      <li><strong>现代延续</strong>：游艇、徒步、应急包里常见小型磁罗盘。</li>
+                    </ul>
+                    <p class="pm-note">当代卫星导航（GNSS）普及后，指南针仍是船舶与飞机的<strong>备份定向手段</strong>，体现「古老原理」的韧性。</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <footer class="papermaking-modal__foot"><p>配图来自本项目「科普页面」文件夹，仅供教育使用。</p></footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="gunpowder-modal" class="papermaking-modal" data-science="gunpowder" aria-hidden="true" role="dialog" aria-labelledby="gp-modal-title">
+      <div class="papermaking-modal__backdrop"></div>
+      <div class="papermaking-modal__panel">
+        <header class="papermaking-modal__head">
+          <h2 id="gp-modal-title">火药 · 四大发明之一</h2>
+          <button type="button" class="papermaking-modal__close" aria-label="关闭">×</button>
+        </header>
+        <div class="papermaking-modal__body pm-shell">
+          <nav class="pm-sidebar" aria-label="火药板块">
+            <p class="pm-sidebar__title">板块</p>
+            <div class="pm-sidebar__nav">
+              <button type="button" class="pm-nav-btn is-active" data-pm-index="0" aria-selected="true"><span class="pm-nav-btn__n">01</span><span class="pm-nav-btn__t">发现与成分</span></button>
+              <button type="button" class="pm-nav-btn" data-pm-index="1" aria-selected="false"><span class="pm-nav-btn__n">02</span><span class="pm-nav-btn__t">军事与工程</span></button>
+              <button type="button" class="pm-nav-btn" data-pm-index="2" aria-selected="false"><span class="pm-nav-btn__n">03</span><span class="pm-nav-btn__t">影响与反思</span></button>
+            </div>
+          </nav>
+          <div class="pm-main">
+            <p class="papermaking-lead">火药是<strong>硝石、硫磺、炭</strong>等含能混合物，点燃后迅速产生大量气体与热，可用于<strong>庆典、采矿、军事</strong>；它的发明与改进深刻改变了战争形态。</p>
+            <p class="pm-scroll-hint">当前：发现与成分</p>
+            <div class="pm-detail-region" tabindex="0" aria-label="火药科普详情">
+              <article class="pm-panel is-active" role="tabpanel">
+                <h3 class="pm-panel__h">炼丹术中的「伏火」与早期火药</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Fireworks_Over_Shanghai_-_China_%285667893529%29.jpg/800px-Fireworks_Over_Shanghai_-_China_%285667893529%29.jpg" alt="烟花与可控燃烧" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>烟花是火药「低速、观赏型」应用：强调色彩与造型，与军事用途配方、工艺不同。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">炼丹炉里的意外发现</h4>
+                    <p>唐代方士在炼丹中观察到某些硝硫炭混合物<strong>易燃爆</strong>，文献中出现「伏火」等记载。火药并非「单一瞬间发明」，而是长期试错中逐渐稳定的配方体系。</p>
+                    <h4 class="pm-subh">黑火药为什么能「喷火」</h4>
+                    <p>黑火药基本组成：硝酸钾（硝）作氧化剂，硫磺降低燃点，炭粉作燃料与疏松剂；比例影响燃速与爆轰/爆燃特性。点燃后固体迅速产生大量气体与热，若在开放空间燃烧，主要表现为火焰与声响；若在密闭容器内，压力骤升，破坏力陡增。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>氧化还原</strong>：硝提供氧，炭与硫参与燃烧反应。</li>
+                      <li><strong>颗粒与湿度</strong>：研磨细度、含水量都会影响点燃难易与稳定性。</li>
+                    </ul>
+                    <p class="pm-note">儿童阅读请强调：火药属于危险品，生活中只能作为<strong>历史文化知识</strong>了解，绝不能模仿实验或自行接触不明化学品。</p>
+                  </div>
+                </div>
+              </article>
+              <article class="pm-panel" hidden role="tabpanel">
+                <h3 class="pm-panel__h">从突火枪到火炮与爆破</h3>
+                <div class="pm-grid pm-grid--reverse">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Xuan_paper_making_AnHui_Cina.jpg/640px-Xuan_paper_making_AnHui_Cina.jpg" alt="工程与工坊" width="480" height="320" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>火药用于开山、采矿时，需与钻孔、填塞、引爆流程严格配合。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">从礼花到城防</h4>
+                    <p>宋代出现<strong>突火枪、震天雷</strong>等管形与抛掷火器；元明时期火铳、火炮技术成熟，城防与海战战术随之改变。同一类含能材料，既可用于节庆烟花，也可用于工程爆破——关键在<strong>配方、药量、约束方式与使用规范</strong>。</p>
+                    <h4 class="pm-subh">工程上的「可控释放」</h4>
+                    <p>采矿、修路中的定向爆破，依赖钻孔深度、填塞长度、引爆顺序等工程细节；现代工业炸药与电子雷管让过程更可控，但「安全距离、警戒、专业资质」始终是底线。</p>
+                    <p>近代以后<strong>无烟火药、硝化甘油与混合炸药</strong>取代黑火药成为军用与工业主力，但「氧化剂+燃料+约束空间」的基本思路仍相通。</p>
+                  </div>
+                </div>
+              </article>
+              <article class="pm-panel" hidden role="tabpanel">
+                <h3 class="pm-panel__h">社会、伦理与现代安全</h3>
+                <div class="pm-grid">
+                  <figure class="pm-figure">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Chinese_Bookbinding.jpg/640px-Chinese_Bookbinding.jpg" alt="文献与知识记录" width="480" height="320" loading="lazy" decoding="async" referrerpolicy="no-referrer-when-downgrade" />
+                    <figcaption>火药史是科技史的一部分：理解它有助于讨论「技术双刃剑」与公共政策。</figcaption>
+                  </figure>
+                  <div class="pm-text">
+                    <h4 class="pm-subh">技术史上的「双刃剑」</h4>
+                    <p>火药既带来<strong>工程效率</strong>（开山、隧道、水利），也带来<strong>战争破坏力</strong>；现代社会通过立法、专营、运输与储存规范降低风险。讨论火药史，也是在讨论「人类如何与强大技术共处」。</p>
+                    <h4 class="pm-subh">博物馆与影视里的火药</h4>
+                    <p>许多古火器藏品已去功能化，仅供形制研究；影视剧中的爆炸镜头多为特效与安全道具。区分「真实危险」与「叙事夸张」，是媒介素养的一部分。</p>
+                    <p>科普火药重在<strong>安全意识</strong>：切勿自行配制或模仿实验；合法渠道观赏烟花、遵守当地法规。</p>
+                    <ul class="pm-bullets">
+                      <li><strong>遇到可疑物品</strong>：远离现场，告知成人并报警，不触碰、不移动。</li>
+                      <li><strong>节日烟花</strong>：选择正规产品，阅读说明，远离人群与易燃物。</li>
+                    </ul>
+                    <p class="pm-note">本页内容仅供历史文化教育，不涉及任何可操作的配方细节。</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <footer class="papermaking-modal__foot"><p>配图来自本项目「科普页面」文件夹，仅供教育使用。</p></footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="character-chat-modal"
+      class="papermaking-modal character-chat-modal"
+      data-character-chat="1"
+      data-character="cailun"
+      aria-hidden="true"
+      role="dialog"
+      aria-labelledby="character-modal-title"
+    >
+      <div class="papermaking-modal__backdrop" aria-hidden="true"></div>
+      <div class="papermaking-modal__panel cailun-modal__panel">
+        <header class="papermaking-modal__head">
+          <h2 id="character-modal-title">角色对话</h2>
+          <button type="button" class="papermaking-modal__close" aria-label="关闭">×</button>
+        </header>
+        <div class="papermaking-modal__body cailun-body">
+          <p class="cailun-intro" id="character-intro"></p>
+          <div id="character-messages" class="cailun-messages" tabindex="0" aria-label="对话记录"></div>
+          <div class="cailun-composer">
+            <label class="visually-hidden" for="character-input">输入消息</label>
+            <textarea
+              id="character-input"
+              class="cailun-input"
+              rows="2"
+              maxlength="800"
+              autocomplete="off"
+              placeholder=""
+            ></textarea>
+            <button type="button" class="cailun-send" id="character-send">发送</button>
+          </div>
+          <p class="cailun-foot" id="character-api-status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

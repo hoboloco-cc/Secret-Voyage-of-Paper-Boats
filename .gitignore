@@ -1,0 +1,17 @@
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.env
+.env.*
+*.local
+
+node_modules/
+.npm/
+
+.cursor/
+.vscode/
+*.log
+
+# 本地代理密钥（切勿上传）
+server/.env
