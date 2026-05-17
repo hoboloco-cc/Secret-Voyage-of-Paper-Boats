@@ -761,6 +761,61 @@ body.is-on-cover .face-panel {
   background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(232, 220, 255, 0.35) 0%, transparent 70%);
 }
 
+.read-aloud-slot {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--book-max-w);
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0.15rem;
+}
+
+.read-aloud-slot[hidden] {
+  display: none !important;
+}
+
+.read-aloud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem 0.45rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(107, 90, 154, 0.4);
+  background: linear-gradient(180deg, #fff 0%, rgba(232, 226, 248, 0.95) 100%);
+  color: #4a4068;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(90, 74, 154, 0.16);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.read-aloud-btn__icon {
+  flex-shrink: 0;
+  color: #6b5a9a;
+}
+
+.read-aloud-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(90, 74, 154, 0.22);
+}
+
+.read-aloud-btn:focus-visible {
+  outline: 2px solid rgba(123, 107, 200, 0.85);
+  outline-offset: 3px;
+}
+
+.read-aloud-btn.is-playing {
+  background: linear-gradient(135deg, #7b6bc8 0%, #5a4a9a 100%);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.read-aloud-btn.is-playing .read-aloud-btn__icon {
+  color: #fff;
+}
+
 .jump-show-slot {
   flex: 0 0 auto;
   width: 100%;
@@ -918,32 +973,6 @@ body.jump-show-open {
   vertical-align: middle;
   user-select: none;
   pointer-events: none;
-}
-
-/* 点读热点：透明可点，悬停微亮 */
-.read-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.read-hotspot {
-  position: absolute;
-  pointer-events: auto;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.read-hotspot:hover,
-.read-hotspot:focus-visible {
-  background: rgba(160, 140, 210, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(107, 90, 154, 0.35);
-  outline: none;
-}
-
-.read-hotspot:active {
-  background: rgba(160, 140, 210, 0.32);
 }
 
 /* 上册造纸术入口页：书页内提示条 */
@@ -1221,6 +1250,11 @@ body.jump-show-open {
   .jump-show-btn {
     min-height: 2.75rem;
     padding: 0.55rem 1.5rem;
+  }
+
+  .read-aloud-btn {
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem 0.5rem 0.75rem;
   }
 }
 

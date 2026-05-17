@@ -9,7 +9,7 @@
 /** 书名：改这里会同步到浏览器标题、图片无障碍说明等 */
 export const bookTitles = {
   en: "Secret Voyage of Paper Boats",
-  zh: "纸船的神秘航线",
+  zh: "纸船的秘密航线",
 };
 
 /** 阅读页顶栏左侧主标题（可与书名不同） */
@@ -119,6 +119,66 @@ function pagesIn(folder, fileNames, readSpotsByFile = {}) {
   }));
 }
 
+/**
+ * 点读热点（相对整页 0–100%）。
+ * @param {object} p
+ * @param {number} p.left
+ * @param {number} p.top
+ * @param {number} p.width
+ * @param {number} p.height
+ * @param {string} [p.text] 朗读文案；无 audio 时用浏览器中文朗读
+ * @param {string} [p.audio] 录音路径，如 audio/绘本上册/1-1.mp3（优先播放）
+ * @param {string} [p.label] 无障碍说明
+ */
+/** 整页旁白（由书页外朗读按钮触发，不占画面热点） */
+export function narrationSpot({ text = "", audio, label = "朗读本页" }) {
+  return { text, audio, label };
+}
+
+/** 画面内小块点读（可选，需 left/top/width/height 百分比） */
+export function readSpot({ left, top, width, height, text = "", audio, label }) {
+  return { left, top, width, height, text, audio, label };
+}
+
+/**
+ * narrationByFile: { "1-1.jpg": "旁白文字" } 或 { "1-1.jpg": { text, audio } }
+ */
+function spotsFromNarration(narrationByFile) {
+  const out = {};
+  for (const [file, entry] of Object.entries(narrationByFile)) {
+    if (entry == null || entry === "") continue;
+    const text = typeof entry === "string" ? entry : entry.text ?? "";
+    const audio = typeof entry === "string" ? undefined : entry.audio;
+    if (!text && !audio) continue;
+    const label = audio && !text ? "播放本页朗读" : "朗读本页";
+    out[file] = [narrationSpot({ text, audio, label })];
+  }
+  return out;
+}
+
+/** voice/ 内 MP3：页文件名 stem 与音频一致，如 2-3.jpg → voice/2-3.mp3 */
+function voiceNarrationForPages(pageFileNames, volumePrefix = "1") {
+  const out = {};
+  const innerRe = new RegExp(`^${volumePrefix}-\\d+$`);
+  for (const file of pageFileNames) {
+    const stem = file.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+    if (!innerRe.test(stem)) continue;
+    out[file] = { audio: `voice/${stem}.mp3` };
+  }
+  return out;
+}
+
+/** 多句点读：同一页多个区域 */
+function mergeReadSpots(...maps) {
+  const out = {};
+  for (const map of maps) {
+    for (const [file, spots] of Object.entries(map)) {
+      out[file] = [...(out[file] ?? []), ...spots];
+    }
+  }
+  return out;
+}
+
 // —— 上册：把 11 个文件名改成你「绘本上册」文件夹里真实的名字（顺序 = 翻页顺序）——
 const UP_PAGE_FILES = [
   "1.jpg",
@@ -151,15 +211,63 @@ const DOWN_PAGE_FILES = [
   "2-10.jpg",
 ];
 
+/**
+ * —— 上册朗读：voice/ 内 MP3；1-0.mp3 绑在封面 1.jpg 下方，其余与页码一致 ——
+ */
+const UP_NARRATION = {
+  "1.jpg": { audio: "voice/1-0.mp3" },
+  ...voiceNarrationForPages(
+    [
+      "1-1.jpg",
+      "1-2.jpg",
+      "1-3.jpg",
+      "1-4.jpg",
+      "1-5.jpg",
+      "1-6.jpg",
+      "1-7.jpg",
+      "1-8.jpg",
+      "1-9.jpg",
+    ],
+    "1"
+  ),
+};
+
+/**
+ * —— 下册朗读：voice/ 内 MP3；2.mp3 绑封面 2.jpg，2-0 … 2-10 与各页一致 ——
+ * 缺 audio 的页不会显示朗读按钮；补文件后在列表中加入页文件名即可。
+ */
+const DOWN_NARRATION = {
+  "2.jpg": { audio: "voice/2.mp3" },
+  ...voiceNarrationForPages(
+    [
+      "2-0.jpg",
+      "2-1.jpg",
+      "2-2.jpg",
+      "2-3.jpg",
+      "2-4.jpg",
+      "2-5.jpg",
+      "2-6.jpg",
+      "2-7.jpg",
+      "2-8.jpg",
+      "2-9.jpg",
+      "2-10.jpg",
+    ],
+    "2"
+  ),
+};
+
+const UP_READ_SPOTS = mergeReadSpots(spotsFromNarration(UP_NARRATION));
+const DOWN_READ_SPOTS = mergeReadSpots(spotsFromNarration(DOWN_NARRATION));
+
 export const volumes = [
   {
     id: "up",
     label: "绘本上册",
-    pages: pagesIn("绘本上册", UP_PAGE_FILES),
+    pages: pagesIn("绘本上册", UP_PAGE_FILES, UP_READ_SPOTS),
   },
   {
     id: "down",
     label: "绘本下册",
-    pages: pagesIn("绘本下册", DOWN_PAGE_FILES),
+    pages: pagesIn("绘本下册", DOWN_PAGE_FILES, DOWN_READ_SPOTS),
   },
 ];

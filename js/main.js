@@ -39,7 +39,7 @@ const els = {
   stage: document.getElementById("book-stage"),
   frame: document.getElementById("book-frame"),
   img: document.getElementById("book-img"),
-  readLayer: document.getElementById("read-layer"),
+  readAloudSlot: document.getElementById("read-aloud-slot"),
   toast: document.getElementById("toast"),
   facePanel: document.getElementById("face-panel"),
   video: document.getElementById("cam-video"),
@@ -63,16 +63,31 @@ const els = {
   jumpShowClose: document.getElementById("jump-show-close"),
   jumpShowImg: document.getElementById("jump-show-img"),
   bgMusic: document.getElementById("bg-music"),
+  readAudio: document.getElementById("read-audio"),
   coverMusicBtn: document.getElementById("cover-music-btn"),
 };
 
 const BG_MUSIC_SRC = "music/music.mp3";
-const BG_MUSIC_VOLUME = 0.65;
+const BG_MUSIC_VOLUME = 0.42;
+/** 朗读时 BGM 目标音量比例（相对正常音量，保留背景声） */
+const BG_MUSIC_DUCK_RATIO = 0.28;
+const BG_MUSIC_DUCK_MIN = 0.1;
+const BGM_FADE_MS = 900;
+const READ_ALOUD_VOLUME = 1;
 
 let inBookExperience = false;
 let gestureBooted = false;
 let bgMusicLoadErrorShown = false;
 let bgMusicAwaitingUnmute = false;
+let bgMusicDucked = false;
+let bgMusicVolumeBeforeDuck = BG_MUSIC_VOLUME;
+let bgMusicFadeRaf = null;
+let bgMusicFadeGen = 0;
+let readAudioObjectUrl = null;
+let narrationPlayGen = 0;
+let narrationPlaying = false;
+let speechGen = 0;
+let speechVoicesReady = false;
 
 /** 上册绘本页 src → 科普模态与握拳提示文案 */
 const SCIENCE_GATES = [
@@ -623,6 +638,7 @@ function kickCoverMusicPlayback() {
 function startBackgroundMusic() {
   const audio = els.bgMusic;
   if (!audio) return Promise.resolve();
+  if (isNarrationActive()) return Promise.resolve();
 
   audio.loop = true;
   audio.volume = BG_MUSIC_VOLUME;
@@ -677,6 +693,7 @@ function bindCoverMusicControls() {
 
 function bindBackgroundMusicUnlock() {
   const unlock = () => {
+    if (isNarrationActive()) return;
     void startBackgroundMusic();
   };
   document.addEventListener("pointerdown", unlock, { capture: true, passive: true });
@@ -912,49 +929,314 @@ function applyScale() {
   els.stage.style.transform = `scale(${scale})`;
 }
 
-function stopSpeechAndAudio() {
-  window.speechSynthesis.cancel();
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
+function cancelBgMusicFade() {
+  if (bgMusicFadeRaf != null) {
+    cancelAnimationFrame(bgMusicFadeRaf);
+    bgMusicFadeRaf = null;
   }
+}
+
+function fadeBgMusicVolume(audio, toVolume, onDone) {
+  cancelBgMusicFade();
+  const from = audio.volume;
+  const startAt = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - startAt) / BGM_FADE_MS);
+    const eased = t * t * (3 - 2 * t);
+    audio.volume = from + (toVolume - from) * eased;
+    if (t < 1) {
+      bgMusicFadeRaf = requestAnimationFrame(step);
+      return;
+    }
+    bgMusicFadeRaf = null;
+    audio.volume = toVolume;
+    onDone?.();
+  };
+  bgMusicFadeRaf = requestAnimationFrame(step);
+}
+
+function isNarrationActive() {
+  const a = els.readAudio;
+  return narrationPlaying || Boolean(a && !a.paused && a.currentTime > 0 && !a.ended);
+}
+
+function duckBackgroundMusic() {
+  const audio = els.bgMusic;
+  if (!audio || audio.muted || audio.paused) return;
+  if (!bgMusicDucked) {
+    bgMusicVolumeBeforeDuck = audio.volume > 0 ? audio.volume : BG_MUSIC_VOLUME;
+    bgMusicDucked = true;
+  }
+  const target = Math.max(BG_MUSIC_DUCK_MIN, bgMusicVolumeBeforeDuck * BG_MUSIC_DUCK_RATIO);
+  fadeBgMusicVolume(audio, target);
+}
+
+function restoreBackgroundMusic() {
+  const audio = els.bgMusic;
+  if (!audio || !bgMusicDucked) return;
+  ++bgMusicFadeGen;
+  const target = bgMusicVolumeBeforeDuck;
+  bgMusicDucked = false;
+  if (audio.paused) {
+    audio.volume = target;
+    return;
+  }
+  fadeBgMusicVolume(audio, target);
+}
+
+function clearReadAudioElement() {
+  const el = els.readAudio;
+  if (!el) return;
+  el.onended = null;
+  el.ontimeupdate = null;
+  el.onerror = null;
+  el.pause();
+  el.removeAttribute("src");
+  el.load();
+  if (readAudioObjectUrl) {
+    URL.revokeObjectURL(readAudioObjectUrl);
+    readAudioObjectUrl = null;
+  }
+}
+
+function stopNarrationOnly() {
+  narrationPlayGen += 1;
+  narrationPlaying = false;
+  speechGen += 1;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  setReadAloudButtonPlaying(false);
+  currentAudio = null;
+  clearReadAudioElement();
+}
+
+function loadNarrationIntoReadAudio(src) {
+  const el = els.readAudio;
+  if (!el) return Promise.reject(new Error("read-audio missing"));
+
+  clearReadAudioElement();
+
+  const waitReady = () =>
+    new Promise((resolve, reject) => {
+      const onReady = () => {
+        el.removeEventListener("canplaythrough", onReady);
+        el.removeEventListener("error", onFail);
+        resolve(el);
+      };
+      const onFail = () => {
+        el.removeEventListener("canplaythrough", onReady);
+        el.removeEventListener("error", onFail);
+        reject(el.error || new Error("load failed"));
+      };
+      el.addEventListener("canplaythrough", onReady, { once: true });
+      el.addEventListener("error", onFail, { once: true });
+      el.load();
+    });
+
+  if (location.protocol === "file:") {
+    el.src = src;
+    return waitReady();
+  }
+
+  return fetch(src)
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.blob();
+    })
+    .then((blob) => {
+      readAudioObjectUrl = URL.createObjectURL(blob);
+      el.src = readAudioObjectUrl;
+      return waitReady();
+    });
+}
+
+function stopSpeechAndAudio() {
+  stopNarrationOnly();
+  restoreBackgroundMusic();
+}
+
+function pickChineseVoice() {
+  const voices = window.speechSynthesis?.getVoices?.() ?? [];
+  return (
+    voices.find((v) => v.lang === "zh-CN") ||
+    voices.find((v) => v.lang.startsWith("zh")) ||
+    voices[0] ||
+    null
+  );
+}
+
+function warmupSpeechVoices() {
+  if (!window.speechSynthesis || speechVoicesReady) return;
+  const load = () => {
+    window.speechSynthesis.getVoices();
+    speechVoicesReady = true;
+  };
+  load();
+  window.speechSynthesis.addEventListener("voiceschanged", load, { once: true });
 }
 
 function speak(text) {
-  stopSpeechAndAudio();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "zh-CN";
-  u.rate = 0.92;
-  window.speechSynthesis.speak(u);
+  if (!text?.trim()) {
+    showToast("本页尚未配置朗读文字");
+    return;
+  }
+  if (!window.speechSynthesis) {
+    showToast("当前浏览器不支持语音朗读");
+    return;
+  }
+  warmupSpeechVoices();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
+    currentAudio = null;
+  }
+  const gen = ++speechGen;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    if (gen !== speechGen) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.rate = 0.88;
+    u.volume = READ_ALOUD_VOLUME;
+    u.pitch = 1.05;
+    const voice = pickChineseVoice();
+    if (voice) u.voice = voice;
+    u.onstart = () => duckBackgroundMusic();
+    u.onend = () => {
+      narrationPlaying = false;
+      restoreBackgroundMusic();
+      setReadAloudButtonPlaying(false);
+    };
+    u.onerror = () => {
+      narrationPlaying = false;
+      restoreBackgroundMusic();
+      setReadAloudButtonPlaying(false);
+      showToast("朗读失败，请确认系统已安装中文语音");
+    };
+    window.speechSynthesis.speak(u);
+  }, 120);
+}
+
+function setReadAloudButtonPlaying(playing) {
+  const btn = document.getElementById("read-aloud-btn");
+  if (!btn) return;
+  btn.classList.toggle("is-playing", playing);
+  btn.setAttribute("aria-pressed", playing ? "true" : "false");
+}
+
+function finishNarrationPlayback(gen, failed, spot) {
+  if (gen !== narrationPlayGen) return;
+  narrationPlaying = false;
+  currentAudio = null;
+  setReadAloudButtonPlaying(false);
+  clearReadAudioElement();
+  restoreBackgroundMusic();
+  if (failed && spot?.text) {
+    speak(spot.text);
+    showToast("录音未找到，已改用语音朗读");
+  } else if (failed) {
+    showToast("朗读音频加载失败");
+  }
 }
 
 function playRead(spot) {
-  stopSpeechAndAudio();
   if (spot.audio) {
-    const a = new Audio(spot.audio);
-    currentAudio = a;
-    a.play().catch(() => speak(spot.text || ""));
+    void playReadAudio(spot);
     return;
   }
-  if (spot.text) speak(spot.text);
+  stopNarrationOnly();
+  if (spot.text) {
+    narrationPlaying = true;
+    duckBackgroundMusic();
+    setReadAloudButtonPlaying(true);
+    speak(spot.text);
+    showToast("正在朗读…");
+    return;
+  }
+  showToast("本区域尚未配置朗读内容");
 }
 
-function renderHotspots(page) {
-  els.readLayer.innerHTML = "";
-  const spots = page.readSpots || [];
-  for (const s of spots) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "read-hotspot";
-    b.style.left = `${s.left}%`;
-    b.style.top = `${s.top}%`;
-    b.style.width = `${s.width}%`;
-    b.style.height = `${s.height}%`;
-    b.setAttribute("aria-label", "点读");
-    b.title = "点读";
-    b.addEventListener("click", () => playRead(s));
-    els.readLayer.appendChild(b);
+async function playReadAudio(spot) {
+  stopNarrationOnly();
+  const gen = ++narrationPlayGen;
+
+  try {
+    const a = await loadNarrationIntoReadAudio(spot.audio);
+    if (gen !== narrationPlayGen) return;
+
+    a.volume = READ_ALOUD_VOLUME;
+    currentAudio = a;
+    narrationPlaying = true;
+
+    let completed = false;
+    const complete = (failed) => {
+      if (completed || gen !== narrationPlayGen) return;
+      completed = true;
+      finishNarrationPlayback(gen, failed, spot);
+    };
+
+    a.onended = () => {
+      if (gen !== narrationPlayGen) return;
+      const d = a.duration;
+      const t = a.currentTime;
+      if (Number.isFinite(d) && d > 0.5 && t < d - 0.35) {
+        void a.play().catch(() => complete(false));
+        return;
+      }
+      complete(false);
+    };
+
+    a.ontimeupdate = () => {
+      if (gen !== narrationPlayGen) return;
+      const d = a.duration;
+      if (Number.isFinite(d) && d > 0 && a.currentTime >= d - 0.12) {
+        a.ontimeupdate = null;
+        complete(false);
+      }
+    };
+
+    a.onerror = () => complete(true);
+
+    duckBackgroundMusic();
+    await a.play();
+    if (gen !== narrationPlayGen) return;
+    setReadAloudButtonPlaying(true);
+    showToast("正在播放朗读…");
+  } catch (e) {
+    console.warn("[read-audio]", spot.audio, e);
+    finishNarrationPlayback(gen, true, spot);
   }
+}
+
+function firstReadableSpot(page) {
+  const spots = page?.readSpots ?? [];
+  return spots.find((s) => s.text || s.audio) ?? spots[0] ?? null;
+}
+
+const READ_ALOUD_ICON = `<svg class="read-aloud-btn__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 10v4h4l5 5V5L7 10H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+
+function renderReadAloudControl(page) {
+  const slot = els.readAloudSlot;
+  if (!slot) return;
+  const spot = firstReadableSpot(page);
+  const hasRead = Boolean(spot && (spot.text || spot.audio));
+  if (!hasRead) {
+    slot.hidden = true;
+    slot.innerHTML = "";
+    return;
+  }
+  slot.hidden = false;
+  slot.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "read-aloud-btn";
+  btn.className = "read-aloud-btn";
+  const label = spot.label || (spot.audio ? "播放本页录音" : "朗读本页");
+  btn.setAttribute("aria-label", label);
+  btn.title = label;
+  btn.innerHTML = `${READ_ALOUD_ICON}<span class="read-aloud-btn__text">朗读</span>`;
+  btn.addEventListener("click", () => playRead(spot));
+  slot.appendChild(btn);
 }
 
 function renderPage() {
@@ -964,7 +1246,7 @@ function renderPage() {
 
   if (!pages.length) {
     els.img.removeAttribute("src");
-    els.readLayer.innerHTML = "";
+    renderReadAloudControl(null);
     if (els.jumpShowSlot) {
       els.jumpShowSlot.hidden = true;
       els.jumpShowSlot.innerHTML = "";
@@ -979,7 +1261,7 @@ function renderPage() {
   const page = pages[pageIndex];
   els.img.src = page.src;
   els.img.alt = `${bookTitles.zh} · ${currentVolume().label} · 第 ${pageIndex + 1} 页`;
-  renderHotspots(page);
+  renderReadAloudControl(page);
   els.pageInfo.textContent = `${pageIndex + 1} / ${pages.length}`;
   els.btnPrev.disabled = pageIndex <= 0;
   els.btnNext.disabled = pageIndex >= pages.length - 1;
@@ -1124,6 +1406,7 @@ async function bootGesture() {
 
 els.btnPrev.addEventListener("click", goPrev);
 els.btnNext.addEventListener("click", goNext);
+warmupSpeechVoices();
 
 window.addEventListener("keydown", (e) => {
   if (!inBookExperience) {

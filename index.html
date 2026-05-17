@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- 接入豆包等云端对话：先运行 server/cailun-proxy.mjs，再取消下一行注释并改成你的代理地址 -->
     <!-- <meta name="cailun-chat-endpoint" content="http://127.0.0.1:8787/chat" /> -->
-    <title>Secret Voyage of Paper Boats · 纸船的神秘航线</title>
-    <link rel="stylesheet" href="css/book.css?v=61" />
+    <title>Secret Voyage of Paper Boats · 纸船的秘密航线</title>
+    <link rel="stylesheet" href="css/book.css?v=64" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -50,7 +50,7 @@
       <img
         class="cover__corner-logo"
         src="logo2.png"
-        alt="纸船的神秘航线 · 绘本标志"
+        alt="纸船的秘密航线 · 绘本标志"
         width="200"
         height="200"
         decoding="async"
@@ -67,8 +67,8 @@
       </button>
       <div class="cover__inner">
         <header class="cover__masthead">
-          <p class="cover__kicker">四大发明主题绘本 · 交互阅读</p>
-          <h1 class="cover__title-zh" lang="zh-CN">纸船的神秘航线</h1>
+          <p class="cover__kicker">中国古代四大发明主题绘本</p>
+          <h1 class="cover__title-zh" lang="zh-CN">纸船的秘密航线</h1>
           <p class="cover__title-en" lang="en">Secret Voyage of Paper Boats</p>
           <p class="cover__subtitle">趣味冒险　科普教育　数字交互</p>
         </header>
@@ -87,7 +87,7 @@
           <img
             class="site-nav__corner-logo"
             src="logo2.png"
-            alt="纸船的神秘航线 · 绘本标志"
+            alt="纸船的秘密航线 · 绘本标志"
             width="200"
             height="200"
             decoding="async"
@@ -113,6 +113,8 @@
         <p class="site-nav__hint">
           <strong>翻页</strong>：四指握拳，拇指水平伸出翻页。
           <span class="site-nav__hint-sep" aria-hidden="true">·</span>
+          <strong>朗读</strong>：点书页下方喇叭播放配音（上册封面 1→1-0 音频；下册封面 2→2.mp3，内页与页码一致）。
+          <span class="site-nav__hint-sep" aria-hidden="true">·</span>
           <strong>缩放</strong>：五指张开放大，指尖聚拢缩小。
           <span class="site-nav__hint-sep" aria-hidden="true">·</span>
           <strong>握拳互动</strong>：上册进入四大发明科普；下册可与虚拟智能体对话。
@@ -126,7 +128,6 @@
       <div class="book-stage" id="book-stage">
         <div class="book-frame" id="book-frame">
           <img id="book-img" alt="" />
-          <div class="read-layer" id="read-layer"></div>
           <aside id="science-gate-hint" class="papermaking-gate-hint" hidden aria-live="polite">
             <div class="papermaking-gate-hint__inner">
               <span class="papermaking-gate-hint__badge">互动提示</span>
@@ -137,6 +138,7 @@
           </aside>
         </div>
       </div>
+      <div id="read-aloud-slot" class="read-aloud-slot" hidden aria-live="polite"></div>
       <div id="jump-show-slot" class="jump-show-slot" hidden aria-live="polite"></div>
     </main>
 
@@ -155,6 +157,7 @@
     <div class="toast" id="toast" role="status"></div>
 
     <audio id="bg-music" src="music/music.mp3" loop preload="auto" playsinline aria-hidden="true"></audio>
+    <audio id="read-audio" preload="auto" playsinline hidden aria-hidden="true"></audio>
 
     <div id="paper-scan-overlay" class="paper-scan-overlay" aria-hidden="true">
       <button type="button" class="paper-scan-overlay__close" id="paper-scan-close" aria-label="取消扫描并返回绘本">
